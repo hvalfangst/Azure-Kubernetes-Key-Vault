@@ -38,7 +38,9 @@ jobs:
       - name: Get Secret from Key Vault
         id: get_secret
         run: |
-          echo "value=$(az keyvault secret show --name ${{ env.ANIMALS }} --vault-name ${{ env.AZURE_KEYVAULT_NAME }} --query value -o tsv)" >> $GITHUB_OUTPUT
+          secret_value=$(az keyvault secret show --name ${{ env.ANIMALS }} --vault-name ${{ env.AZURE_KEYVAULT_NAME }} --query value -o tsv)
+          echo "SUPER_EXCITING_SECRET=${secret_value}" >> $GITHUB_ENV
+          echo "::add-mask::$secret_value"
 
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v1
@@ -49,5 +51,5 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest --build-arg ANIMALS="${{steps.get_secret.outputs.value}}" .
+          docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest --build-arg ANIMALS=${{ env.SUPER_EXCITING_SECRET }} .
           docker push ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
