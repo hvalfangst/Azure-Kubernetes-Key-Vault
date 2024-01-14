@@ -10,11 +10,11 @@ COPY .. .
 # Change directory to the location of our newly copied python codebase
 WORKDIR /app/python
 
-## Define a build argument for the environment variable
-#ARG ACCESS_KEY
+# Define a build argument for the environment variable
+ARG ANIMALS
 
 # Set the environment variable with the build argument
-ENV ANIMALS="panda=Fluffy,lion=Leo,bear=Ursa,peguin=Gyss"
+ENV ANIMALS=$ANIMALS
 
 # Install all the dependencies required to run the Flask application
 RUN pip install -r requirements.txt
