@@ -1,4 +1,4 @@
-name: Azure CI/CD
+name: Deploy to AKS
 
 on:
   workflow_dispatch:
@@ -13,7 +13,9 @@ jobs:
     environment: production
     env:
 
-      # Foundation
+      # NOTE: in a production setting the following values should all be stored as GitHub secrets
+
+      # General
       RESOURCE_GROUP: hvalfangstresourcegroup
       LOCATION: West Europe
 
@@ -22,10 +24,13 @@ jobs:
       CONTAINER_REGISTRY: hvalfangstcontainerregistry.azurecr.io
       IMAGE_NAME: hvalfangst-zoo
 
+      # Kubernetes
+      DEPLOYMENT_NAME: fastapi-deployment
+      CLUSTER_NAME: hvalfangst-cluster
+
       # Azure Key Vault
       AZURE_KEYVAULT_NAME: hvalfangstkeyvault
       ANIMALS: animals-list
-
 
     steps:
       - name: Checkout repository
@@ -51,5 +56,26 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest --build-arg ANIMALS=${{ env.SUPER_EXCITING_SECRET }} .
-          docker push ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --build-arg ANIMALS=${{ env.SUPER_EXCITING_SECRET }} .
+          docker push ${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Set AKS context
+        id: set-context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+
+      - name: Setup kubectl
+        id: install-kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Deploy to AKS
+        id: deploy-aks
+        uses: Azure/k8s-deploy@v4
+        with:
+          namespace: 'default'
+          manifests: |
+            k8s/fat-deployment.yml
+          images: '${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          pull-images: true
